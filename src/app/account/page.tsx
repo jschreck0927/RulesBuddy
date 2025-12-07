@@ -27,7 +27,6 @@ export default function AccountPage() {
       setFormState({
         first_name: profile.first_name || '',
         last_name: profile.last_name || '',
-        phone: profile.phone || '',
         department_id: profile.department_id || '',
         district_id: profile.district_id || '',
         post_id: profile.post_id || '',
