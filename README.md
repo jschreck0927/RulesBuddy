@@ -1,4 +1,5 @@
 # RulesBuddy
+<<<<<<< HEAD
 
 RulesBuddy is a membership and governance web application designed for Posts, Districts, and Departments. It provides secure access to governing documents, tools for drafting and exporting forms, and workflows for Article IX case management.
 
@@ -72,3 +73,6 @@ Important directories:
 ## License
 
 This project is provided for educational purposes and has no associated license. You may adapt it for your own use.
+=======
+Next.js + Supabase + Stripe app powering RulesBuddy
+>>>>>>> 970f714a79ccbf6952a235d6cb265c30990d828a
