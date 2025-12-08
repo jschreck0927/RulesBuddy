@@ -6,8 +6,9 @@ const stripeSecretKey = process.env.STRIPE_SECRET_KEY!;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 const stripe = new Stripe(stripeSecretKey, {
-apiVersion: '2022-11-15',
+  apiVersion: "2022-11-15",
 });
+
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
