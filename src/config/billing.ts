@@ -1,3 +1,4 @@
+// INDIVIDUAL SUBSCRIPTION PRICES
 export const individualPrices = {
   bronzeMonthly: process.env.NEXT_PUBLIC_STRIPE_BRONZE_MONTHLY_PRICE_ID || '',
   bronzeAnnual: process.env.NEXT_PUBLIC_STRIPE_BRONZE_ANNUAL_PRICE_ID || '',
@@ -9,7 +10,8 @@ export const individualPrices = {
   goldAnnual: process.env.NEXT_PUBLIC_STRIPE_GOLD_ANNUAL_PRICE_ID || '',
 };
 
-export const seatPrices = {
+// GROUP SEAT PRICES — must use this name because checkout imports groupSeatPrices
+export const groupSeatPrices = {
   bronzeSeatAnnual:
     process.env.NEXT_PUBLIC_STRIPE_BRONZE_SEAT_ANNUAL_PRICE_ID || '',
   silverSeatAnnual:
