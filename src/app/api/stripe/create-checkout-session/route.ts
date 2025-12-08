@@ -1,81 +1,106 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
-import { individualPrices, groupSeatPrices } from '@/config/billing';
+import { NextRequest, NextResponse } from "next/server";
+import Stripe from "stripe";
+import { individualPrices, groupSeatPrices } from "@/config/billing";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-
-if (!stripeSecretKey) {
-  throw new Error('STRIPE_SECRET_KEY is not set');
-}
+if (!stripeSecretKey) throw new Error("Missing STRIPE_SECRET_KEY");
 
 const stripe = new Stripe(stripeSecretKey, {
-apiVersion: '2022-11-15',
+  apiVersion: "2025-01-27",
 });
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const {
-    mode,
-    tier,
-    billingPeriod,
-    seatCount = 1,
-    successUrl,
-    cancelUrl,
-    userId,
-    groupId,
-  } = body;
   try {
-    let priceId: string | undefined;
-    let quantity = 1;
-    if (mode === 'individual') {
-      if (billingPeriod === 'monthly') {
-        priceId = {
+    const body = await req.json();
+
+    const {
+      mode,            // "individual" | "group"
+      tier,            // "BRONZE" | "SILVER" | "GOLD"
+      billingPeriod,   // "monthly" | "annual"
+      seatCount,       // group only
+      userId
+    } = body;
+
+    if (!mode || !tier || !billingPeriod) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    let priceId = "";
+
+    //
+    // INDIVIDUAL PLANS
+    //
+    if (mode === "individual") {
+      if (billingPeriod === "monthly") {
+        const monthlyMap: Record<string, string> = {
           BRONZE: individualPrices.bronzeMonthly,
           SILVER: individualPrices.silverMonthly,
           GOLD: individualPrices.goldMonthly,
-        }[tier as keyof typeof individualPrices];
+        };
+        priceId = monthlyMap[tier];
       } else {
-        priceId = {
+        const annualMap: Record<string, string> = {
           BRONZE: individualPrices.bronzeAnnual,
           SILVER: individualPrices.silverAnnual,
           GOLD: individualPrices.goldAnnual,
-        }[tier as keyof typeof individualPrices];
+        };
+        priceId = annualMap[tier];
       }
-      quantity = 1;
-    } else if (mode === 'group') {
-      priceId = {
-        BRONZE: groupSeatPrices.bronzeAnnual,
-        SILVER: groupSeatPrices.silverAnnual,
-        GOLD: groupSeatPrices.goldAnnual,
-      }[tier as keyof typeof groupSeatPrices];
-      quantity = seatCount;
     }
+
+    //
+    // GROUP SEAT PLANS
+    //
+    if (mode === "group") {
+      if (!seatCount || seatCount < 3) {
+        return NextResponse.json(
+          { error: "Group plans require minimum of 3 seats" },
+          { status: 400 }
+        );
+      }
+
+      const seatMap: Record<string, string> = {
+        BRONZE: groupSeatPrices.bronzeSeatAnnual,
+        SILVER: groupSeatPrices.silverSeatAnnual,
+        GOLD: groupSeatPrices.goldSeatAnnual,
+      };
+
+      priceId = seatMap[tier];
+    }
+
     if (!priceId) {
-      throw new Error('Invalid price configuration');
+      return NextResponse.json(
+        { error: "Unable to determine price ID" },
+        { status: 400 }
+      );
     }
+
     const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      payment_method_types: ['card'],
+      mode: "subscription",
+      customer_email: body.email || undefined,
+      metadata: {
+        userId,
+        mode,
+        tier,
+        billingPeriod,
+        seatCount: seatCount ?? "",
+      },
       line_items: [
         {
           price: priceId,
-          quantity,
+          quantity: mode === "group" ? seatCount : 1,
         },
       ],
-      metadata: {
-        mode,
-        tier,
-        user_id: userId,
-        group_id: groupId ?? '',
-        seat_count: quantity,
-      },
-      success_url: successUrl || `${process.env.NEXT_PUBLIC_APP_BASE_URL}/account?session=success`,
-      cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_APP_BASE_URL}/account?session=cancel`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_BASE_URL}/subscription/success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_BASE_URL}/subscription/cancel`,
     });
+
     return NextResponse.json({ url: session.url });
   } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({ error: { message: err.message } }, { status: 500 });
+    console.error("CREATE CHECKOUT SESSION ERROR", err);
+    return NextResponse.json(
+      { error: err.message || "Unknown error" },
+      { status: 500 }
+    );
   }
 }
