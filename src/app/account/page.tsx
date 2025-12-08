@@ -9,14 +9,15 @@ export default function AccountPage() {
   const { profile, user, loading } = useUser();
   const router = useRouter();
   const [editingProfile, setEditingProfile] = useState(false);
+
   const [formState, setFormState] = useState({
     first_name: '',
     last_name: '',
-    phone: '',
     department_id: '',
     district_id: '',
     post_id: '',
   });
+
   const [departments, setDepartments] = useState<any[]>([]);
   const [districts, setDistricts] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
@@ -36,9 +37,14 @@ export default function AccountPage() {
 
   useEffect(() => {
     const loadDepartments = async () => {
-      const { data, error } = await supabase.from('departments').select('id, name, code').eq('is_active', true);
+      const { data, error } = await supabase
+        .from('departments')
+        .select('id, name, code')
+        .eq('is_active', true);
+
       if (!error) setDepartments(data || []);
     };
+
     loadDepartments();
   }, []);
 
@@ -48,13 +54,16 @@ export default function AccountPage() {
         setDistricts([]);
         return;
       }
+
       const { data, error } = await supabase
         .from('districts')
         .select('id, name')
         .eq('department_id', formState.department_id)
         .eq('is_active', true);
+
       if (!error) setDistricts(data || []);
     };
+
     loadDistricts();
   }, [formState.department_id]);
 
@@ -64,13 +73,16 @@ export default function AccountPage() {
         setPosts([]);
         return;
       }
+
       const { data, error } = await supabase
         .from('posts')
         .select('id, name')
         .eq('district_id', formState.district_id)
         .eq('is_active', true);
+
       if (!error) setPosts(data || []);
     };
+
     loadPosts();
   }, [formState.district_id]);
 
@@ -78,40 +90,49 @@ export default function AccountPage() {
     const { name, value } = e.target;
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
+
   const saveProfile = async () => {
     if (!profile) return;
+
     setSaving(true);
+
     await supabase
       .from('profiles')
       .update({
         first_name: formState.first_name,
         last_name: formState.last_name,
-        phone: formState.phone,
         department_id: formState.department_id || null,
         district_id: formState.district_id || null,
         post_id: formState.post_id || null,
       })
       .eq('user_id', profile.user_id);
+
     setSaving(false);
     setEditingProfile(false);
   };
+
   const manageBilling = async () => {
     if (!profile) return;
+
     const res = await fetch('/api/stripe/portal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: profile.user_id }),
     });
+
     const data = await res.json();
     if (data.url) {
       window.location.href = data.url;
     }
   };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     router.push('/login');
   };
+
   if (loading) return <p>Loading...</p>;
+
   if (!user) {
     return (
       <div className="space-y-4">
@@ -121,11 +142,14 @@ export default function AccountPage() {
       </div>
     );
   }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Account</h1>
+
       <div className="p-4 bg-white dark:bg-neutral-800 border rounded-md shadow">
         <h2 className="font-semibold mb-2">Profile</h2>
+
         {!editingProfile ? (
           <div>
             <ul className="space-y-1 text-sm">
@@ -134,9 +158,6 @@ export default function AccountPage() {
               </li>
               <li>
                 <span className="font-medium">Email:</span> {user.email}
-              </li>
-              <li>
-                <span className="font-medium">Phone:</span> {profile?.phone ?? 'N/A'}
               </li>
               <li>
                 <span className="font-medium">Department:</span> {departments.find((d) => d.id === profile?.department_id)?.name || 'N/A'}
@@ -151,6 +172,7 @@ export default function AccountPage() {
                 <span className="font-medium">Tier:</span> {profile?.membership_tier}
               </li>
             </ul>
+
             <button
               onClick={() => setEditingProfile(true)}
               className="mt-2 inline-block text-primary underline text-sm"
@@ -171,6 +193,7 @@ export default function AccountPage() {
                   className="w-full p-2 border rounded-md"
                 />
               </div>
+
               <div className="flex-1">
                 <label className="block text-xs font-medium mb-1">Last Name</label>
                 <input
@@ -182,16 +205,7 @@ export default function AccountPage() {
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium mb-1">Phone</label>
-              <input
-                type="tel"
-                name="phone"
-                value={formState.phone}
-                onChange={handleChange}
-                className="w-full p-2 border rounded-md"
-              />
-            </div>
+
             <div>
               <label className="block text-xs font-medium mb-1">Department</label>
               <select
@@ -206,6 +220,7 @@ export default function AccountPage() {
                 ))}
               </select>
             </div>
+
             <div>
               <label className="block text-xs font-medium mb-1">District</label>
               <select
@@ -220,6 +235,7 @@ export default function AccountPage() {
                 ))}
               </select>
             </div>
+
             <div>
               <label className="block text-xs font-medium mb-1">Post</label>
               <select
@@ -234,6 +250,7 @@ export default function AccountPage() {
                 ))}
               </select>
             </div>
+
             <div className="flex space-x-2">
               <button
                 onClick={saveProfile}
@@ -242,6 +259,7 @@ export default function AccountPage() {
               >
                 {saving ? 'Saving...' : 'Save'}
               </button>
+
               <button
                 onClick={() => setEditingProfile(false)}
                 className="px-4 py-2 border rounded-md"
@@ -252,9 +270,11 @@ export default function AccountPage() {
           </div>
         )}
       </div>
+
       <div className="p-4 bg-white dark:bg-neutral-800 border rounded-md shadow">
         <h2 className="font-semibold mb-2">Billing</h2>
         <p className="text-sm mb-2">Current tier: {profile?.membership_tier}</p>
+
         <button
           onClick={manageBilling}
           className="inline-block px-4 py-2 rounded-md bg-primary text-white text-sm"
@@ -262,12 +282,14 @@ export default function AccountPage() {
           Manage Billing
         </button>
       </div>
+
       <div className="p-4 bg-white dark:bg-neutral-800 border rounded-md shadow">
         <h2 className="font-semibold mb-2">Notifications</h2>
         <Link href="#" className="inline-block px-4 py-2 rounded-md bg-primary text-white text-sm">
           Open Notifications
         </Link>
       </div>
+
       <div>
         <button onClick={signOut} className="px-4 py-2 border rounded-md">
           Sign Out
