@@ -3,9 +3,15 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
+// Explicit type so Supabase does NOT try to parse "count(*)"
+interface TierCountRow {
+  membership_tier: string | null;
+  count: number;
+}
+
 export default function AdminPage() {
   const [stats, setStats] = useState({
-    tierCounts: [],
+    tierCounts: [] as TierCountRow[],
     deptCount: 0,
     districtCount: 0,
     postCount: 0,
@@ -17,29 +23,31 @@ export default function AdminPage() {
     const loadStats = async () => {
       setLoading(true);
 
-      // MEMBERSHIP TIER COUNTS (no .group() in supabase-js v2)
-      const { data: tierCounts } = await supabase
+      // Force the result into the TierCountRow[] type
+      const { data: rawTierCounts } = await supabase
         .from("profiles")
         .select("membership_tier, count:count(*)")
         .order("membership_tier");
 
-      // DEPARTMENTS
+      const tierCounts: TierCountRow[] = (rawTierCounts || []).map((row: any) => ({
+        membership_tier: row.membership_tier,
+        count: row.count,
+      }));
+
       const { count: deptCount } = await supabase
         .from("departments")
         .select("id", { count: "exact", head: true });
 
-      // DISTRICTS
       const { count: districtCount } = await supabase
         .from("districts")
         .select("id", { count: "exact", head: true });
 
-      // POSTS
       const { count: postCount } = await supabase
         .from("posts")
         .select("id", { count: "exact", head: true });
 
       setStats({
-        tierCounts: tierCounts || [],
+        tierCounts,
         deptCount: deptCount || 0,
         districtCount: districtCount || 0,
         postCount: postCount || 0,
@@ -60,11 +68,9 @@ export default function AdminPage() {
       <div className="p-4 bg-white dark:bg-neutral-800 border rounded-md shadow">
         <h2 className="font-semibold mb-2">Membership Tiers</h2>
         <ul className="space-y-1 text-sm">
-          {stats.tierCounts.map((row: any, idx: number) => (
+          {stats.tierCounts.map((row, idx) => (
             <li key={idx}>
-              <span className="font-medium">
-                {row.membership_tier || "Unknown"}:
-              </span>{" "}
+              <span className="font-medium">{row.membership_tier || "Unknown"}:</span>{" "}
               {row.count}
             </li>
           ))}
@@ -75,12 +81,10 @@ export default function AdminPage() {
         <h2 className="font-semibold mb-2">Organization Structure</h2>
         <ul className="space-y-1 text-sm">
           <li>
-            <span className="font-medium">Departments:</span>{" "}
-            {stats.deptCount}
+            <span className="font-medium">Departments:</span> {stats.deptCount}
           </li>
           <li>
-            <span className="font-medium">Districts:</span>{" "}
-            {stats.districtCount}
+            <span className="font-medium">Districts:</span> {stats.districtCount}
           </li>
           <li>
             <span className="font-medium">Posts:</span> {stats.postCount}
